@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using App.Metrics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace HelloApi
 {
@@ -25,9 +19,18 @@ namespace HelloApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            var metrics = AppMetrics.CreateDefaultBuilder()
+                .Report.ToInfluxDb("http://127.0.0.1:8086", "metricsdatabase")
+                .Build();
+
+            services.AddMetrics(metrics);
+            services.AddMetricsTrackingMiddleware();
+            services.AddMetricsReportScheduler();
+
             services
+                .AddMvc()
                 .AddMetrics()
-                .AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+                .SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -42,6 +45,7 @@ namespace HelloApi
                 app.UseHsts();
             }
 
+            app.UseMetricsAllMiddleware();
             app.UseHttpsRedirection();
             app.UseMvc();
         }
